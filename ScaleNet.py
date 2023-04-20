@@ -11,20 +11,6 @@ from torch import nn
 from tqdm import tqdm
 
 
-def plot_errors():
-    scales = []
-    rmses = []
-
-    for scale in np.linspace(0, 10, 1000):
-
-        rmse = (gt - pred/scale) ** 2
-        rmse = np.sqrt(rmse.mean())
-        scales.append(scale)
-        rmses.append(rmse)
-
-    plt.plot(scales, rmses)
-    plt.show()
-
 class DepthImageDataSet(Dataset):
     def __init__(self):
         self.gt_depth_dir = "./data/depth_gt/0048"
@@ -63,15 +49,16 @@ class ScaleNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.scale_net = nn.Sequential(
-                            nn.Conv2d(1, 3, 3, padding='same'),
+                            nn.Conv2d(1, 32, 3, padding='same'),
                             nn.ReLU(),
-                            nn.Conv2d(3, 5, 3, padding='same'),
+                            nn.Conv2d(32, 64, 3, padding='same'),
                             nn.ReLU(),
-                            nn.Conv2d(5, 5, 3, padding='same'),
+
+                            nn.Conv2d(64, 64, 3, padding='same'),
                             nn.ReLU(),
-                            nn.Conv2d(5, 3, 3, padding='same'),
+                            nn.Conv2d(64, 32, 3, padding='same'),
                             nn.ReLU(),
-                            nn.Conv2d(3, 1, 3, padding='same')
+                            nn.Conv2d(32, 1, 3, padding='same')
                         )
         
     def forward(self, depth_input):
@@ -143,11 +130,12 @@ def train_model(model, train_dataloader, num_epochs=5, lr=1e-3, device='cpu'):
     # ---
     pbar = tqdm(range(num_epochs))
     train_losses = []
+
     for epoch_i in pbar:
         train_loss_i = None
-        val_loss_i = None
         train_loss_i = train_step(model=model, train_loader=train_dataloader, optimizer=optimizer, device=device)
         train_losses.append(train_loss_i)
+        pbar.set_description("Training loss: %f" % train_loss_i)
 
     return train_losses
 
@@ -169,18 +157,18 @@ def run():
     plt.plot(figsize=(12, 3))
     plt.plot(train_losses)
     plt.grid()
-    plt.set_title('Train Loss')
-    plt.set_xlabel('Epochs')
-    plt.set_ylabel('Train Loss')
-    plt.set_yscale('log')
+    plt.title('Train Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Train Loss')
+    plt.yscale('log')
 
     plt.show()
-    plt.savefig(os.path.join("results", "training_loss.png"))
+    plt.savefig(os.path.join("./results", "training_loss.png"))
 
     # ---
 
     # save model:
-    save_path = os.path.join("model", "scan_net_model.pt")
+    save_path = os.path.join("./model", "scan_net_model.pt")
     torch.save(scale_net_model.state_dict(), save_path)
 
 
